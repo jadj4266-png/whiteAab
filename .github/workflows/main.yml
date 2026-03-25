@@ -3,9 +3,7 @@ name: Build Android AAB
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:  # تتيح التشغيل اليدوي
+  workflow_dispatch:
 
 jobs:
   build:
@@ -21,14 +19,33 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
     
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - name: Setup Gradle
+      run: |
+        # البحث عن مجلد يحتوي على gradlew
+        if [ -f "gradlew" ]; then
+          chmod +x gradlew
+          echo "GRADLE_PATH=." >> $GITHUB_ENV
+        elif [ -f "white/gradlew" ]; then
+          cd white
+          chmod +x gradlew
+          echo "GRADLE_PATH=white" >> $GITHUB_ENV
+          cd ..
+        else
+          echo "Error: gradlew not found"
+          find . -name "gradlew"
+          exit 1
+        fi
     
     - name: Build AAB
-      run: ./gradlew bundleRelease
+      run: |
+        cd ${{ env.GRADLE_PATH }}
+        ./gradlew bundleRelease
+        cd ..
     
     - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
         name: app-release.aab
-        path: app/build/outputs/bundle/release/app-release.aab
+        path: |
+          app/build/outputs/bundle/release/app-release.aab
+          white/app/build/outputs/bundle/release/app-release.aab
